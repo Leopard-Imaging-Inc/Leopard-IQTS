@@ -1,0 +1,24 @@
+﻿# LeopardIQ MTF Compare Result CSV
+# compare_schema_version: 1
+# created: 2026-08-20T12:02:20
+# label_a: 清晰镜头
+# label_b: 模糊镜头
+# main_metric: mtf@0.125
+# tie_freq: 0.01
+# tie_sfr: 0.01
+# score_tie: 0.01
+# zone_weights: center=0.6;edge=0;corner=0.4
+# display_unit: cy/px
+# cross_pixel: 0
+# verdict: 清晰镜头 更好（胜 5 / 平 0 / 负 0），优势主要在中心（Δ = 0.739 ）
+# stat_mtf@0.125: win=5;tie=0;loss=0;excluded=0;score_a=0.854666;score_b=0.115691;verdict=A
+# stat_mtf50: win=5;tie=0;loss=0;excluded=0;score_a=0.500676;score_b=0.158784;verdict=A
+# stat_mtf30: win=5;tie=0;loss=0;excluded=0;score_a=0.632692;score_b=0.201476;verdict=A
+# stat_mtf50p: win=5;tie=0;loss=0;excluded=0;score_a=0.500676;score_b=0.158784;verdict=A
+# stat_mtfa: win=5;tie=0;loss=0;excluded=0;score_a=0.250801;score_b=0.084863;verdict=A
+zone,channel,roi_a,roi_b,mtf@0.125_a,mtf@0.125_b,mtf@0.125_delta,mtf@0.125_result,mtf50_a,mtf50_b,mtf50_delta,mtf50_result,mtf30_a,mtf30_b,mtf30_delta,mtf30_result,mtf50p_a,mtf50p_b,mtf50p_delta,mtf50p_result,mtfa_a,mtfa_b,mtfa_delta,mtfa_result
+center,Y,1,1,0.854666,0.115691,0.738975,A,0.250338,0.079392,0.170946,A,0.316346,0.100738,0.215608,A,0.250338,0.079392,0.170946,A,0.250801,0.084863,0.165938,A
+corner_tl,Y,3,3,0.854666,0.115691,0.738975,A,0.250338,0.079392,0.170946,A,0.316346,0.100738,0.215608,A,0.250338,0.079392,0.170946,A,0.250801,0.084863,0.165938,A
+corner_tr,Y,2,2,0.854666,0.115691,0.738975,A,0.250338,0.079392,0.170946,A,0.316346,0.100738,0.215608,A,0.250338,0.079392,0.170946,A,0.250801,0.084863,0.165938,A
+corner_bl,Y,4,4,0.854666,0.115691,0.738975,A,0.250338,0.079392,0.170946,A,0.316346,0.100738,0.215608,A,0.250338,0.079392,0.170946,A,0.250801,0.084863,0.165938,A
+corner_br,Y,5,5,0.854666,0.115691,0.738975,A,0.250338,0.079392,0.170946,A,0.316346,0.100738,0.215608,A,0.250338,0.079392,0.170946,A,0.250801,0.084863,0.165938,A

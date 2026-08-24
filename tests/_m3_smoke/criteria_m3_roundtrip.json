@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "modules": {
+    "mtf": {
+      "params": {
+        "pixel_size_um": 2.0,
+        "picture_height": 1080,
+        "freq_unit": "Cycles/pixel",
+        "freq1": 0.125,
+        "mtfnn1_type": "MTFnn",
+        "mtfnn1_value": 30.0,
+        "mtfnn2_type": "MTFnnP",
+        "mtfnn2_value": 50.0,
+        "gamma": 1.0,
+        "rois": [
+          {
+            "image": "a.png",
+            "rect": [
+              10,
+              10,
+              60,
+              40
+            ]
+          }
+        ]
+      },
+      "criteria": {
+        "readout1_min": 0.15,
+        "sfr_main_min": 0.2
+      }
+    }
+  }
+}

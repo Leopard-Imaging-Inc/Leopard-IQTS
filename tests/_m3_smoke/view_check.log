@@ -1,0 +1,7 @@
+setup: OK
+F:\project\python\LeopardIQTest_Software\scripts\check_view_interactions.py:28: DeprecationWarning: Function: 'QMouseEvent.QMouseEvent(QEvent.Type type, const QPointF &localPos, Qt.MouseButton button, QFlags<Qt.MouseButton> buttons, QFlags<Qt.KeyboardModifier> modifiers, const QPointingDevice *device)' is marked as deprecated, please check the documentation for more information.
+  e = QMouseEvent(etype, QPointF(pos), button, button,
+单击选中 ROI: OK
+双击请求精调信号: OK
+Delete 键删除 ROI: OK
+主视图查看交互全部正常

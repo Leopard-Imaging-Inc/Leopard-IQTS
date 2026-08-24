@@ -1,0 +1,30 @@
+panel ROI 框选 + config 注入: OK
+screenshot: F:\project\python\LeopardIQTest_Software\tests\_m3_smoke\m3_mtf_panel.png
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+�Աȶ�   0.803279
+  nn  160
+screenshot: F:\project\python\LeopardIQTest_Software\tests\_m3_smoke\m3_mtf_figure.png
+ANALYZE → MTF 曲线 Figure → CLOSE FIGURES: OK
+真实 RAW 载入（自动识别 1920×1200 + 去马赛克）: OK
+screenshot: F:\project\python\LeopardIQTest_Software\tests\_m3_smoke\m3_mtf_panel_raw.png
+screenshot: F:\project\python\LeopardIQTest_Software\tests\_m3_smoke\m3_roi_dialog.png
+ROI 精调弹框（移动/边缘/步长/回写）: OK
+screenshot: F:\project\python\LeopardIQTest_Software\tests\_m3_smoke\m3_roi_dialog_draw.png
+框选弹框（draw_new 画框 → 精调合一 → 回写）: OK

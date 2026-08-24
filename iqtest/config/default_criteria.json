@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "modules": {
+    "mtf": {
+      "params": {
+        "freq1": 0.125
+      },
+      "criteria": {
+        "readout1_min": 0.1,
+        "sfr_main_min": 0.2
+      }
+    },
+    "shading": {
+      "params": {
+        "light_source": "D65",
+        "luminance_channel": "Y",
+        "grid_size": 16
+      },
+      "criteria": {
+        "ri_corner_min": 0.7,
+        "lum_uniformity_min": 0.8
+      }
+    },
+    "color": {
+      "params": {
+        "cfa_pattern": "RGGB",
+        "border_crop_pct": 5.0
+      },
+      "criteria": {
+        "gr_ratio_tol": 0.05,
+        "gb_ratio_tol": 0.05
+      }
+    },
+    "flare": {
+      "params": {
+        "flare_type": "Type C",
+        "debug_overlay": false
+      },
+      "criteria": {
+        "flare_max_pct": 1.0
+      }
+    },
+    "fov": {
+      "params": {
+        "method": "棋盘格法",
+        "chessboard_rows": 9,
+        "chessboard_cols": 12,
+        "square_size_mm": 20.0,
+        "distance_mm": 500.0
+      },
+      "criteria": {
+        "hfov_min": 60.0,
+        "hfov_max": 120.0
+      }
+    }
+  }
+}

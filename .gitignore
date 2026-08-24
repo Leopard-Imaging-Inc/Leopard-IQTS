@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# 编译产物 / 二进制引擎
+*.pyd
+*.so
+*.dll
+
+# 测试数据（RAW 体积大，按需保留）
+assets/data/**/*.raw
+reference/data/*.raw
+*.bmp
+*.png
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# 本地临时验证目录
+.tmp_test*/
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db

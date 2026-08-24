@@ -1,0 +1,31 @@
+# LeopardIQTest_Software 依赖清单
+# 目标环境：Conda 环境 LpIQtest312（Python 3.12.13）
+# 重建：conda create -n LpIQtest312 python=3.12 && pip install -r requirements.txt
+#
+# ⚠️ numpy 必须锁定 1.x：
+#    leopardiq/mtf_sfrmat5_cpp.pyd（sfrmat5 C++ 引擎）基于 NumPy 1.x ABI 编译，
+#    NumPy 2.x 下会报 "compiled using NumPy 1.x" 警告且可能崩溃。
+#    scipy / opencv-python 版本需与 numpy 1.x 联动，请勿单独升级。
+
+numpy==1.26.4
+opencv-python==4.10.0.84
+scipy==1.13.1
+matplotlib==3.11.1
+PyYAML==6.0.3
+
+# GUI（M1 起）：PySide6 不依赖 numpy ABI，可与上面版本共存
+PySide6==6.11.1
+
+# 图表（M3 起）：pyqtgraph 实时曲线（报告渲染仍用 matplotlib）
+pyqtgraph==0.14.0
+
+# 以下为 matplotlib/scipy 传递依赖（pip freeze 固化，保持环境可复现）
+contourpy==1.3.3
+cycler==0.12.1
+fonttools==4.63.0
+kiwisolver==1.5.0
+packaging==26.0
+pillow==12.3.0
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+six==1.17.0

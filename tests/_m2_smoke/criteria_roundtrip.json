@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "modules": {
+    "mtf": {
+      "params": {
+        "cfa": "Y",
+        "freq1": 0.125,
+        "freq2": 0.25,
+        "raw_width": 1920,
+        "raw_height": 1080,
+        "black_level": 0.0,
+        "rois": []
+      },
+      "criteria": {
+        "mtf50_min": 0.15,
+        "sfr_main_min": 0.2
+      }
+    }
+  }
+}
