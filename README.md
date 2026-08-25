@@ -1,4 +1,4 @@
-# LeopardIQTest_Software
+# LeopardIQTest\_Software
 
 摄像头模组图像质量（Image Quality, IQ）评估软件，包含两部分：
 
@@ -23,7 +23,6 @@ iqtest/             # GUI 应用
   config/           # criteria JSON / LenFocus config / Read Raw 设置
   analysis/         # 算法适配器 + 模组比较纯逻辑
   panels/ figures/ widgets/
-reference/          # 参考实现（遗留）
 scripts/            # 截图辅助脚本
 tests/              # 脚本式测试（python tests/test_*.py）
 doc/                # 文档（规划 / 开发 / 优化方案）
@@ -49,6 +48,18 @@ conda activate LpIQtest312
 python -m iqtest.main
 ```
 
+## 编译打包（exe）
+
+可通过 [build.py](build.py) 将软件编译为 Windows 可执行程序（PyInstaller）：
+
+```bash
+conda activate LpIQtest312
+python build.py
+```
+
+输出：`dist/LeopardIQTS/` 目录，含 `LeopardIQTS.exe` 及全部依赖（单目录模式，GUI 无控制台）。
+`build.py` 已内置数据文件（logo / sfrmat5 C++ 引擎 / criteria / Read Raw 配置）、隐藏导入与排除项配置。
+
 ## 测试
 
 测试为脚本式（非 pytest），在项目根目录、`LpIQtest312` 环境下运行。
@@ -71,4 +82,7 @@ python tests\test_m3_*.py        # MTF 算法（Gamma / MTF 指标 / 引擎 / �
 - `doc/LeopardIQ-IQ测试软件规划.md` —— 软件整体规划
 - `doc/LeopardIQ-IQ测试软件-MTF开发.md` —— MTF 开发细节
 - `doc/LeopardIQ-IQ测试软件-模组性能比较MTF.md` —— MTF 模组比较
-- `doc/代码优化方案.md` —— 代码清理与后续重构路线图
+- `doc/LeopardIQTS-软件使用说明书.md` —— 软件使用说明书
+- `doc/leopardiq_algorithm_analysis.md` —— LeopardIQ 算法库功能分析
+- `doc/LeopardIQ-MTF与Imatest一致性验证.md` —— MTF 测试流程与 Imatest 一致性验证
+

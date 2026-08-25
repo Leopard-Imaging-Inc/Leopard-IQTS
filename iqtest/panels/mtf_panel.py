@@ -37,15 +37,7 @@ from leopardiq.mtf import FREQ_UNITS, unit_label, unit_scale
 class MtfPanel(ModulePanel):
     MODULE_KEY = "mtf"
     TITLE = "MTF / SFR"
-    DESCRIPTION = (
-        "斜边 SFR 分析：载入图像后框选斜边 ROI（每个 ROI 包含一条黑白斜边），"
-        "算法计算 MTF @ 评估频率（参与判定）、MTF50 与两个可配置的 "
-        "Secondary Readout（MTFnn/MTFnnP），并绘制 MTF 曲线。"
-        "Gamma (input) 用于 SFR 前线性化（仿 Imatest）：RAW 线性数据 = 1.0，"
-        "BMP 等 sRGB 编码图像 ≈ 0.5。"
-        "RAW 读取参数（分辨率/位深/黑电平/CFA）在 Utilities → "
-        "Generalized Read Raw 中统一配置。"
-    )
+    
 
     PARAMS = [
         {
@@ -304,17 +296,6 @@ class MtfPanel(ModulePanel):
         self.roi_view = RoiImageView()
         self.roi_view.setMinimumHeight(320)
         v.addWidget(self.roi_view, stretch=1)
-
-        hint = QLabel(
-            "「查看」模式下（默认）：拖拽平移、滚轮缩放、单击选中 ROI、"
-            "双击 ROI 弹出框选/精调窗口、右键或 Delete 删除单个 ROI。\n"
-            "点「框选…」在弹出的窗口中画框并精调；「Add LF CSV…」读取 LenFocus "
-            "结果 CSV 的 edge's center（ROI 中心点），按「LF 边长」自动画出全部 ROI。\n"
-            "RAW 读取参数（分辨率/黑电平/CFA）在 Utilities → Generalized Read Raw 配置。"
-        )
-        hint.setObjectName("panelDesc")
-        hint.setWordWrap(True)
-        v.addWidget(hint)
 
         layout.addWidget(group, stretch=1)
 

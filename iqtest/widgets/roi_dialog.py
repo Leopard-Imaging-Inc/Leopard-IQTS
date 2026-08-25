@@ -7,8 +7,9 @@
   - 单边缘调整（T/B/L/R 双边按钮）；
   - 步长：1 / 5 / 15 pixel 单选（默认 1px）；
   - L/R/T/B 数值框直接输入（回车生效，自图像左上角计）；
-  - 视图：滚轮缩放、拖拽平移、「显示全图 / 适应 ROI」切换；
-  - 多 ROI 时「上一个 / 下一个」切换编辑。
+  - 视图：滚轮缩放、拖拽平移、「显示全图 ⇄ 适应 ROI」单按钮切换；
+  - 多 ROI 时「上一个 / 下一个」切换，也可在图像上直接单击选中某个 ROI；
+  - 精调状态下单击「框选新 ROI…」可在同一次弹框内追加框选多个 ROI。
 
 用法：
     dlg = RoiFineTuneDialog(image_2d, rois, current=0, parent=...)          # 精调已有 ROI
@@ -30,6 +31,7 @@ from PySide6.QtGui import (
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
+    QAbstractSpinBox,
     QButtonGroup,
     QDialog,
     QDialogButtonBox,
@@ -56,6 +58,9 @@ _STEPS = [1, 5, 15]
 
 _ROI_PEN = QPen(QColor("#e8912d"), 2)
 _ROI_PEN.setCosmetic(True)
+#: 非当前 ROI 的静态框（蓝绿色，区分当前编辑的橙色框）
+_ROI_OTHER_PEN = QPen(QColor("#2db8a8"), 2)
+_ROI_OTHER_PEN.setCosmetic(True)
 _ROI_DRAW_PEN = QPen(QColor("#e8912d"), 2, Qt.PenStyle.DashLine)
 _ROI_DRAW_PEN.setCosmetic(True)
 
@@ -64,6 +69,7 @@ class _ZoomView(QGraphicsView):
     """弹框内的图像视图：滚轮缩放 + 拖拽平移；可切换为框选模式（画粗 ROI）。"""
 
     roi_drawn = Signal(list)  # 框选完成：[x, y, w, h]（图像像素坐标）
+    clicked_at = Signal(float, float)  # 非框选模式下单击：scene 坐标（用于点选 ROI）
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -76,6 +82,7 @@ class _ZoomView(QGraphicsView):
         self._draw_enabled = False
         self._draft: QGraphicsRectItem | None = None
         self._draft_start: QRectF | None = None
+        self._press_pos = None  # 非框选模式下的按下点（区分单击与拖拽平移）
 
     def enable_draw(self, on: bool) -> None:
         """切换框选模式：开 → 左键拖拽画矩形（十字光标）；关 → 恢复拖拽平移。"""
@@ -101,6 +108,8 @@ class _ZoomView(QGraphicsView):
             self._draft.setZValue(10)
             event.accept()
             return
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._press_pos = event.position().toPoint()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
@@ -126,6 +135,13 @@ class _ZoomView(QGraphicsView):
                 ])
             event.accept()
             return
+        if (self._press_pos is not None
+                and event.button() == Qt.MouseButton.LeftButton):
+            delta = event.position().toPoint() - self._press_pos
+            self._press_pos = None
+            if delta.manhattanLength() <= 4:  # 视为单击而非拖拽平移
+                pos = self.mapToScene(event.position().toPoint())
+                self.clicked_at.emit(pos.x(), pos.y())
         super().mouseReleaseEvent(event)
 
 
@@ -170,6 +186,7 @@ class RoiFineTuneDialog(QDialog):
         self._rect_item.setPen(QPen(_ROI_PEN))
         self._rect_item.setZValue(5)
         self._view._scene.addItem(self._rect_item)
+        self._other_items: list[QGraphicsRectItem] = []  # 非当前 ROI 的静态框
 
         # ---- 左：控制面板
         self._controls = self._build_controls()
@@ -209,15 +226,16 @@ class RoiFineTuneDialog(QDialog):
         self._btn_prev.clicked.connect(lambda: self._switch_roi(-1))
         self._btn_next.clicked.connect(lambda: self._switch_roi(+1))
         self._view.roi_drawn.connect(self._on_view_roi_drawn)
+        self._view.clicked_at.connect(self._on_view_clicked)
 
         # ---- 框选入口初始状态：禁用精调控件，等待画框
         multi = len(self._rois) > 1
         self._btn_prev.setVisible(multi)
         self._btn_next.setVisible(multi)
         self._hint.setVisible(draw_new)
+        self._btn_add.setVisible(not draw_new)  # 画出首个 ROI 后才显示
         if draw_new:
             self._view.enable_draw(True)
-            self._rect_item.hide()
             self._set_editing_enabled(False)
 
         self._refresh()
@@ -279,16 +297,19 @@ class RoiFineTuneDialog(QDialog):
                         Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(edge_group)
 
-        # 视图切换
+        # 视图切换（单按钮切换：显示全图 ⇄ 适应 ROI）
         self._btn_full = QPushButton("显示全图")
         self._btn_full.setCheckable(True)
-        self._btn_fit = QPushButton("适应 ROI")
         layout.addWidget(self._btn_full)
-        layout.addWidget(self._btn_fit)
+
+        # 追加框选新 ROI（同一次弹框内可连续框选多个，无需确定后再进）
+        self._btn_add = QPushButton("框选新 ROI…")
+        self._btn_add.setCheckable(True)
+        layout.addWidget(self._btn_add)
         layout.addStretch(1)
 
         self._btn_full.toggled.connect(self._on_full_toggled)
-        self._btn_fit.clicked.connect(self._fit_roi)
+        self._btn_add.toggled.connect(self._on_add_toggled)
         return panel
 
     def _sizable(self, btn: QPushButton) -> QPushButton:
@@ -313,6 +334,7 @@ class RoiFineTuneDialog(QDialog):
         for key, label in (("l", "L"), ("r", "R"), ("t", "T"), ("b", "B")):
             spin = QSpinBox()
             spin.setRange(0, max(self._img_w, self._img_h))
+            spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
             spin.setToolTip("像素坐标（自图像左上角），回车生效")
             spin.setKeyboardTracking(False)  # 回车/失焦才提交
             spin.valueChanged.connect(self._on_spin_changed)
@@ -351,6 +373,18 @@ class RoiFineTuneDialog(QDialog):
         return self._rois[self._idx]
 
     def _refresh(self) -> None:
+        # 重建非当前 ROI 的静态框（蓝绿色），保证全图视图下所有 ROI 可见
+        for item in self._other_items:
+            self._view._scene.removeItem(item)
+        self._other_items = [
+            self._view._scene.addRect(
+                QRectF(r[0], r[1], r[2], r[3]), QPen(_ROI_OTHER_PEN)
+            )
+            for i, r in enumerate(self._rois)
+            if i != self._idx
+        ]
+        for item in self._other_items:
+            item.setZValue(4)
         if not self._rois:
             self._roi_label.setText("等待框选…")
             self._size_label.setText(f"(共 {self._img_w}×{self._img_h} px)")
@@ -431,8 +465,32 @@ class RoiFineTuneDialog(QDialog):
         multi = len(self._rois) > 1
         self._btn_prev.setVisible(multi)
         self._btn_next.setVisible(multi)
+        self._btn_add.blockSignals(True)
+        self._btn_add.setChecked(False)
+        self._btn_add.blockSignals(False)
+        self._btn_add.show()
         self._refresh()
         self._fit_roi()
+
+    def _on_add_toggled(self, checked: bool) -> None:
+        """「框选新 ROI…」开关：进入/退出追加框选模式。"""
+        self._view.enable_draw(checked)
+        self._hint.setVisible(checked)
+        if checked:
+            self._hint.setText("在图像上按住左键拖拽，框选新的 ROI")
+        else:
+            self._hint.setText("在图像上按住左键拖拽，框选包含一条黑白斜边的 ROI")
+            # 首个 ROI 尚未画出时保持框选提示（draw_new 入口）
+            if self._draw_new and not self._new_drawn:
+                self._view.enable_draw(True)
+
+    def _on_view_clicked(self, sx: float, sy: float) -> None:
+        """单击图像：点中某个已有 ROI 则切换为当前编辑对象。"""
+        for i, (x, y, w, h) in enumerate(self._rois):
+            if i != self._idx and x <= sx < x + w and y <= sy < y + h:
+                self._idx = i
+                self._refresh()
+                return
 
     def _on_full_toggled(self, checked: bool) -> None:
         self._btn_full.setText("适应 ROI" if checked else "显示全图")
