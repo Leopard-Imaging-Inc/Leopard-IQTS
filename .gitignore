@@ -15,8 +15,12 @@ dist/
 # 测试数据（RAW 体积大，按需保留）
 assets/data/**/*.raw
 reference/data/*.raw
+
+# 二进制图像默认忽略；doc 目录下的图片（使用说明书截图/文档配图）需要上传
 *.bmp
 *.png
+!doc/**/*.bmp
+!doc/**/*.png
 
 # 虚拟环境
 .venv/
