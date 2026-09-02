@@ -22,7 +22,7 @@ def build() -> None:
         f"{ROOT / 'assets' / 'leopard-logo.jpg'};assets",
         f"{ROOT / 'leopardiq' / 'mtf_sfrmat5_cpp.pyd'};leopardiq",
         f"{ROOT / 'iqtest' / 'config' / 'default_criteria.json'};iqtest/config",
-        f"{ROOT / 'assets' / 'config' / 'MTF' / 'config.json'};assets/config/MTF",
+        f"{ROOT / 'assets' / 'config' / 'MTF' / 'config-AR0234.json'};assets/config/MTF",
         f"{ROOT / 'assets' / 'config' / 'read_raw_settings.json'};assets/config",
     ]
 
@@ -35,8 +35,11 @@ def build() -> None:
         "iqtest.analysis.mtf_compare._csv_io",
         "iqtest.analysis.mtf_compare._model",
         "iqtest.analysis.mtf_export",
+        "iqtest.analysis.shading_adapter",
+        "iqtest.analysis.shading_export",
         "iqtest.figures.base_figure",
         "iqtest.figures.mtf_figure",
+        "iqtest.figures.shading_figure",
         "iqtest.panels.analysis_options",
         "iqtest.panels.base_panel",
         "iqtest.panels.color_panel",

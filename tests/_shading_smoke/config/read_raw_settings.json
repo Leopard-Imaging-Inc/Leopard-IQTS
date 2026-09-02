@@ -1,0 +1,8 @@
+{
+  "width": 128,
+  "height": 128,
+  "bit_depth": "16",
+  "cfa": "RGGB",
+  "demosaic": false,
+  "gray_method": "BT709"
+}

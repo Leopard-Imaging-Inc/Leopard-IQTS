@@ -188,6 +188,12 @@ QPushButton:checked:disabled {
     border: 2px dashed #1b9aaa;
     border-radius: 10px;
 }
+#dropZone[compact="true"] {
+    border-radius: 8px;
+}
+#dropZone[compact="true"] #dropHint {
+    font-size: 15px;
+}
 #dropHint {
     font-size: 20px;
     color: #6d767e;
@@ -196,6 +202,52 @@ QPushButton:checked:disabled {
     color: #a7b0b7;
 }
 QScrollArea { background: #ffffff; border: 2px dashed #c9d1d7; border-radius: 10px; }
+
+/* ---------- Source images 工具栏 ---------- */
+#imgToolBtn, #rowToolBtn {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 6px;
+}
+#imgToolBtn:hover, #rowToolBtn:hover { background: #e8f4f5; }
+#rowToolBtn:disabled { background: transparent; }
+#modeBtn {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 6px 8px;
+}
+#modeBtn[active="true"] {
+    background: #ffffff;
+    border-bottom: 2px solid #1b9aaa;
+}
+
+/* 图像勾选框：圆形指示器，勾选后为实心主色圆（贴近参考界面的蓝色勾选点） */
+QCheckBox#selCheck { spacing: 0px; background: transparent; }
+QCheckBox#selCheck::indicator {
+    width: 18px; height: 18px;
+    border-radius: 10px;
+    border: 2px solid #8a939b;
+    background: #ffffff;
+}
+QCheckBox#selCheck::indicator:hover { border-color: #1b9aaa; }
+QCheckBox#selCheck::indicator:checked {
+    border-color: #1b9aaa;
+    background: #1b9aaa;
+}
+
+/* ---------- 列表模式 ---------- */
+#listRow {
+    background: #ffffff;
+    border-bottom: 1px solid #eef1f3;
+}
+#listRow:hover { background: #f2fafa; }
+#listRow[selected="true"] { background: #f6fdfd; }
+#listRow[selected="true"]:hover { background: #eef9fa; }
+#listRowName { color: #2b2f33; }
+#listRowSize { color: #8a939b; }
+#thumbSize { color: #8a939b; font-size: 12px; }
 
 /* ---------- 单选框 ---------- */
 QRadioButton { spacing: 6px; background: transparent; }
@@ -221,6 +273,7 @@ QRadioButton::indicator:disabled {
     border-radius: 6px;
 }
 #thumbCard:hover { border-color: #1b9aaa; }
+#thumbCard[selected="true"] { border: 2px solid #1b9aaa; }
 #thumbImage {
     background: #eef1f3;
     border-radius: 4px;

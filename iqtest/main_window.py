@@ -35,6 +35,7 @@ from iqtest.config import store
 import iqtest.analysis  # noqa: F401  # M3：注册真实算法进 runner.MODULE_ANALYZERS
 from iqtest.figures.base_figure import FigureManager
 from iqtest.figures.mtf_figure import MtfResultView
+from iqtest.figures.shading_figure import ShadingResultView
 from iqtest.panels import module_title
 from iqtest.panels.analysis_options import AnalysisOptionsWidget
 from iqtest.runner import AnalysisRunner
@@ -143,6 +144,7 @@ class WorkflowPanel(QFrame):
 
         session.images_changed.connect(self._refresh)
         session.analyses_changed.connect(self._refresh)
+        session.selection_changed.connect(self._refresh)
 
         # 步骤标题 / 徽章 / 状态均可点击切换步骤
         self._step_widgets = (
@@ -167,7 +169,9 @@ class WorkflowPanel(QFrame):
     def _refresh(self) -> None:
         n = self.session.count
         self.step1_status.setText(
-            "No images selected" if n == 0 else f"{n} image(s) selected"
+            "No images selected"
+            if n == 0
+            else f"{self.session.selected_count}/{n} image(s) selected"
         )
         if self.session.analyses:
             names = "、".join(module_title(k) for k in self.session.analyses)
@@ -202,6 +206,7 @@ class MainWindow(QMainWindow):
 
         self.figure_manager = FigureManager(self)
         self.figure_manager.register_view("mtf", MtfResultView)
+        self.figure_manager.register_view("shading", ShadingResultView)
         self.runner = AnalysisRunner(self)
         self._run_errors: dict[str, str] = {}
         self._compare_dialog = None  # MTF 模组比较对话框（非模态，单实例）
@@ -417,7 +422,14 @@ class MainWindow(QMainWindow):
             )
             self._set_step(1)
             return
-        images = [e.path for e in self.session.images]
+        images = [e.path for e in self.session.selected_images]
+        if not images:
+            self.statusBar().showMessage(
+                "所有图像均未勾选，请在 ① Select Images 勾选至少一张", 5000
+            )
+            if self._step != 0:
+                self._set_step(0)
+            return
         self._run_errors = {}
         self.workflow.btn_analyze.setEnabled(False)
         self.runner.run(images, self.session.analyses)
@@ -551,6 +563,6 @@ class MainWindow(QMainWindow):
             self,
             "关于 LeopardIQTS",
             f"<b>LeopardIQTS</b> v{__version__} 基于 LeopardiQ 算法库的镜头图像质量（IQ）评估软件。<br>"
-            "当前版本：初步实现 MTF/SFR 配套功能。<br>"
-            "待实现功能：Lens Shading / Color / Flare / FOV。",
+            "当前版本：MTF/SFR、Lens Shading（相对照度 / Color Shading / LSC 校正 / 多光源）。<br>"
+            "待实现功能：Color / Flare / FOV。",
         )

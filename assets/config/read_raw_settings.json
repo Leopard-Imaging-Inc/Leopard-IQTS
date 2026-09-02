@@ -2,7 +2,7 @@
   "width": 1920,
   "height": 1200,
   "bit_depth": "10",
-  "cfa": "GBRG",
+  "cfa": "GRBG",
   "demosaic": true,
   "gray_method": "BT709"
 }

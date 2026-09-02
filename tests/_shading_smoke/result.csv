@@ -1,0 +1,16 @@
+﻿# LeopardIQ Lens Shading Result CSV
+# schema_version: 1
+# label: 测试
+# created: 2026-08-28T16:24:45
+# mode: single
+# light_source: D65
+# image: flat_0.7.png
+# cfa: Y
+# bin_size: 16
+# thresh: 0
+metric,channel,value,status
+ri_tl,Y,0.737134,PASS
+ri_tr,Y,0.784043,PASS
+ri_bl,Y,0.784043,PASS
+ri_br,Y,0.830952,PASS
+ri_diff,,0.093818,PASS

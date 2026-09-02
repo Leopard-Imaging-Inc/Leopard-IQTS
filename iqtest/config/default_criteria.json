@@ -14,11 +14,16 @@
       "params": {
         "light_source": "D65",
         "luminance_channel": "Y",
-        "grid_size": 16
+        "grid_size": 16,
+        "thresh": 0.0,
+        "support_extrapolation": false,
+        "enable_lsc_verify": true
       },
       "criteria": {
         "ri_corner_min": 0.7,
-        "lum_uniformity_min": 0.8
+        "lum_uniformity_min": 0.8,
+        "green_red_shift_max": 0.2,
+        "green_blue_shift_max": 0.2
       }
     },
     "color": {

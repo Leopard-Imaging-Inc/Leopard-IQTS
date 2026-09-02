@@ -6,7 +6,7 @@ M1 仅实现图像集管理（增删、清空、去重）；
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
@@ -25,9 +25,10 @@ THUMBNAILABLE_EXTENSIONS = {
 
 @dataclass(frozen=True)
 class ImageEntry:
-    """一张源图像的会话记录。"""
+    """一张源图像的会话记录。selected=False 的图像不参与 ANALYZE。"""
 
     path: Path
+    selected: bool = True
 
     @property
     def name(self) -> str:
@@ -43,6 +44,8 @@ class Session(QObject):
 
     images_changed = Signal()
     analyses_changed = Signal()
+    #: 仅勾选状态变化（增删图像走 images_changed）
+    selection_changed = Signal()
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -72,6 +75,34 @@ class Session(QObject):
         self.images = [e for e in self.images if e.path != path]
         if len(self.images) != before:
             self.images_changed.emit()
+
+    def clear_images(self) -> None:
+        """移除全部图像（不影响已选分析项）。"""
+        if self.images:
+            self.images.clear()
+            self.images_changed.emit()
+
+    # --------------------------------------------------------------- 勾选状态
+
+    def set_selected(self, path: Path, selected: bool) -> None:
+        for i, e in enumerate(self.images):
+            if e.path == path and e.selected != selected:
+                self.images[i] = replace(e, selected=selected)
+                self.selection_changed.emit()
+                return
+
+    def set_all_selected(self, selected: bool) -> None:
+        if any(e.selected != selected for e in self.images):
+            self.images = [replace(e, selected=selected) for e in self.images]
+            self.selection_changed.emit()
+
+    @property
+    def selected_images(self) -> list[ImageEntry]:
+        return [e for e in self.images if e.selected]
+
+    @property
+    def selected_count(self) -> int:
+        return sum(1 for e in self.images if e.selected)
 
     def clear(self) -> None:
         changed_images = bool(self.images)
