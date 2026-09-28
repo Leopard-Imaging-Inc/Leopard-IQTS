@@ -10,9 +10,9 @@ LeopardIQ Lens Shading 模块。
 - interp_shading_profile：shading 轮廓插值
 """
 
+from .multi_light import analyze_multi_light
 from .relative_illumination import (
     analyze_lens_shading,
-    analyze_multi_light,
     analyze_relative_illumination,
 )
 from .color_uniformity import (
@@ -29,6 +29,11 @@ from .shading_profile import (
     create_flat_field_mask,
     interp_shading_profile,
 )
+from .imatest_metrics import (
+    compute_imatest_color_metrics,
+    compute_imatest_luma_metrics,
+    compute_imatest_metrics,
+)
 
 __all__ = [
     "analyze_lens_shading",
@@ -44,4 +49,7 @@ __all__ = [
     "compute_quadrant_ri",
     "create_flat_field_mask",
     "interp_shading_profile",
+    "compute_imatest_color_metrics",
+    "compute_imatest_luma_metrics",
+    "compute_imatest_metrics",
 ]

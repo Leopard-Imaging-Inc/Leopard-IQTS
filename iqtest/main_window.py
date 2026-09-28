@@ -209,6 +209,7 @@ class MainWindow(QMainWindow):
         self.figure_manager.register_view("shading", ShadingResultView)
         self.runner = AnalysisRunner(self)
         self._run_errors: dict[str, str] = {}
+        self._closing = False  # 关闭中：抑制新的结果窗
         self._compare_dialog = None  # MTF 模组比较对话框（非模态，单实例）
         self.runner.module_finished.connect(self._on_module_finished)
         self.runner.module_error.connect(self._on_module_error)
@@ -438,6 +439,8 @@ class MainWindow(QMainWindow):
         )
 
     def _on_module_finished(self, key: str, result: dict) -> None:
+        if self._closing:  # 主窗口已在关闭，不再弹新结果窗
+            return
         self.figure_manager.show_result(key, module_title(key), result)
 
     def _on_module_error(self, key: str, message: str) -> None:
@@ -557,6 +560,14 @@ class MainWindow(QMainWindow):
                 self.session.analyses[key] = defaults[key]
         self.analysis_options.set_selected(self.session.analyses)
         self.statusBar().showMessage("已恢复默认 criteria", 5000)
+
+    # ------------------------------------------------------------ 关闭
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        """关闭主窗口时同步关闭全部结果 Figure（否则结果窗会残留）。"""
+        self._closing = True
+        self.figure_manager.close_all()
+        super().closeEvent(event)
 
     def _on_about(self) -> None:
         QMessageBox.about(

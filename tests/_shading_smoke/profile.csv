@@ -1,9 +1,9 @@
 ﻿# LeopardIQ Lens Shading Result CSV
-# schema_version: 1
+# schema_version: 2
 # label: 
-# created: 2026-08-28T16:24:45
+# created: 2026-09-23T17:38:19
 # mode: single
-# light_source: D65
+# light_source: 单光源
 # image: flat_0.7.png
 # cfa: Y
 # bin_size: 16

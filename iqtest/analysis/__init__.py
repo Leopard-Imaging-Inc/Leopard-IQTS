@@ -5,10 +5,10 @@ runner.MODULE_ANALYZERS，导入本包即生效（main_window 负责导入）。
 """
 
 from iqtest.analysis.mtf_adapter import analyze_mtf
-from iqtest.analysis.shading_adapter import analyze_shading
+from iqtest.analysis.shading_adapter import analyze_shading, recompute_single
 from iqtest.runner import MODULE_ANALYZERS
 
 MODULE_ANALYZERS["mtf"] = analyze_mtf
 MODULE_ANALYZERS["shading"] = analyze_shading
 
-__all__ = ["analyze_mtf", "analyze_shading"]
+__all__ = ["analyze_mtf", "analyze_shading", "recompute_single"]

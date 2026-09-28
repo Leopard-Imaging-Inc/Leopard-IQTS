@@ -95,6 +95,16 @@ class ConfigForm(QWidget):
         if key in self._labels:
             self._labels[key].setText(text)
 
+    def set_field_visible(self, key: str, visible: bool) -> None:
+        """按字段 key 显示/隐藏整行（label + 控件）。
+
+        QFormLayout 行在 label 与 field 均隐藏时自动折叠。
+        """
+        if key in self._labels:
+            self._labels[key].setVisible(visible)
+        if key in self._widgets:
+            self._widgets[key][1].setVisible(visible)
+
     def values(self) -> dict:
         out: dict = {}
         for key, (field, w) in self._widgets.items():
