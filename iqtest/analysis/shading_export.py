@@ -6,7 +6,9 @@
 - `write_shading_profile_npy`：全分辨率 (H, W, C) profile 落盘（LSC 校正数据）；
 - `write_shading_profile_csv`：bin 网格归一化 RI 数值表（可读，Excel 友好）；
 - `save_shading_profile_image`：报告通道 shading 网格的 colormap PNG；
-- `result_to_csv` / `write_result_csv`：指标判定 CSV（单光源 / 多光源通用）。
+- `save_corrected_image`：LSC 校正后图像灰度 PNG；
+- `result_to_csv` / `write_result_csv`：分节指标 CSV（四象限 RI / Color shift /
+  Imatest 对标，单光源 / 多光源通用）。
 """
 
 from __future__ import annotations
@@ -20,8 +22,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-#: CSV 格式版本
-SCHEMA_VERSION = 1
+#: CSV 格式版本（2：结果 CSV 改为分节表格，新增 Color shift / Imatest 对标）
+SCHEMA_VERSION = 2
 
 
 def _sanitize(text) -> str:
@@ -111,25 +113,157 @@ def save_shading_profile_image(map2d: np.ndarray, path) -> Path:
     return path
 
 
+def save_corrected_image(image: np.ndarray, path, *, bits: int = 16) -> Path:
+    """LSC 校正后图像（2D 灰度或 3 通道彩色）→ PNG（按数据范围归一化，NaN 置 0）。
+
+    Args:
+        image: 校正后图像数据（closed_loop["corrected_image"]，Bayer 时为 demosaic
+            后 RGB 彩色，mono 时为灰度）。
+        path: 输出 png 路径。
+        bits: 输出位深（8 或 16，默认 16 保留更多层次）。
+    """
+    data = np.asarray(image, dtype=np.float64)
+    finite = data[np.isfinite(data)]
+    if finite.size:
+        lo, hi = float(finite.min()), float(finite.max())
+    else:
+        lo, hi = 0.0, 1.0
+    if hi <= lo:
+        hi = lo + 1e-6
+    norm = np.clip((data - lo) / (hi - lo), 0.0, 1.0)
+    norm = np.where(np.isfinite(data), norm, 0.0)
+    if bits == 8:
+        out = (norm * 255.0).round().astype(np.uint8)
+    else:
+        out = (norm * 65535.0).round().astype(np.uint16)
+    if out.ndim == 3 and out.shape[-1] == 3:
+        out = out[:, :, ::-1].copy()  # RGB → BGR 供 cv2.imwrite
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(path), out)
+    return path
+
+
 def _metric_rows(metrics: dict, group: str = "") -> list[tuple]:
-    """单个结果 metrics → (metric, group, value, status) 行（数组按通道展开）。"""
+    """单个结果 metrics → (metric, group, value, status) 行（数组按通道展开）。
+
+    当 status 为逐通道列表时，与 value 逐通道对应；为字符串时所有通道共享。
+    """
     rows: list[tuple] = []
     for key, metric in metrics.items():
         value = metric.get("value")
         status = metric.get("status", "INFO")
         if isinstance(value, (list, tuple, np.ndarray)):
-            for i, v in enumerate(np.atleast_1d(value)):
-                rows.append((key, f"{group}{i}", _fmt(v), status))
+            vals = np.atleast_1d(value)
+            stats = np.atleast_1d(status)
+            for i, v in enumerate(vals):
+                s = stats[i] if i < len(stats) else status
+                rows.append((key, f"{group}{i}", _fmt(v), s))
         else:
             rows.append((key, group, _fmt(value), status))
     return rows
 
 
+#: Color shift 指标键（从主判定表中拆出，单列一节）
+_COLOR_SHIFT_KEYS = ("green_red_shift", "green_blue_shift")
+
+
+def _color_shift_rows(metrics: dict) -> list[list]:
+    """Color shift 指标 → (metric, value, status) 行（缺失项跳过）。"""
+    rows: list[list] = []
+    for key in _COLOR_SHIFT_KEYS:
+        metric = metrics.get(key)
+        if metric is None:
+            continue
+        rows.append([key, _fmt(metric.get("value")), metric.get("status", "INFO")])
+    return rows
+
+
+def _imatest_blocks(imatest: dict | None) -> list[tuple]:
+    """Imatest 对标结果 → [(标题, 表头, 行)]（Luma / Color 各一节，缺失则跳过）。"""
+    if not imatest:
+        return []
+    blocks: list[tuple] = []
+
+    luma = imatest.get("luma")
+    if luma:
+        rows = [
+            ["max_rel", _fmt(luma.get("max_rel"))],
+            ["max_pixel", _fmt(luma.get("max_pixel"))],
+        ]
+        corners = luma.get("corners") or {}
+        rows += [[f"corners_{k}", _fmt(corners[k])]
+                 for k in ("UL", "LL", "UR", "LR", "worst", "mean") if k in corners]
+        sides = luma.get("sides") or {}
+        rows += [[f"sides_{k}", _fmt(sides[k])]
+                 for k in ("L", "R", "T", "B", "mean") if k in sides]
+        for i, v in enumerate(np.atleast_1d(sides.get("worst", []))):
+            rows.append([f"sides_worst{i}", _fmt(v)])
+        blocks.append(("Imatest 对标：Luma 指标", ["metric", "value"], rows))
+
+    color = imatest.get("color")
+    if color:
+        rows = []
+        for name, ratio in (("rg", color.get("rg")), ("bg", color.get("bg"))):
+            if not ratio:
+                continue
+            rows += [[f"{name}_{k}", _fmt(ratio[k])]
+                     for k in ("max", "min", "UL", "LL", "UR", "LR", "L", "R",
+                               "T", "B", "C", "corners_worst", "corners_mean")
+                     if k in ratio]
+        center = color.get("corner_center") or {}
+        rows += [[f"corner_center_{k}", _fmt(center[k])]
+                 for k in ("r_b", "r_g", "b_g") if k in center]
+        blocks.append(("Imatest 对标：Color Shading（R/G、B/G）",
+                       ["metric", "value"], rows))
+    return blocks
+
+
+def _single_blocks(result: dict, details: dict) -> list[tuple]:
+    """单光源 → [(标题, 表头, 行)]：RI 判定 + Color shift + Imatest 对标。"""
+    metrics = result.get("metrics") or {}
+    cfa = list(details.get("channels") or ["Y"])
+
+    ri_rows = []
+    for metric, group, value, status in _metric_rows(
+        {k: v for k, v in metrics.items() if k not in _COLOR_SHIFT_KEYS}
+    ):
+        channel = cfa[int(group)] if group.isdigit() and int(group) < len(cfa) else ""
+        ri_rows.append([metric, channel, value, status])
+
+    blocks = [
+        ("四象限 RI 判定", ["metric", "channel", "value", "status"], ri_rows),
+        ("Color shift", ["metric", "value", "status"], _color_shift_rows(metrics)),
+    ]
+    blocks.extend(_imatest_blocks(details.get("imatest")))
+    return blocks
+
+
+def _multi_blocks(details: dict) -> list[tuple]:
+    """多光源 → [(标题, 表头, 行)]：逐光源 RI 判定 + Color shift。"""
+    ri_rows: list[list] = []
+    color_rows: list[list] = []
+    for light_name, res in (details.get("lights") or {}).items():
+        metrics = res.get("metrics", {})
+        for metric, _group, value, status in _metric_rows(
+            {k: v for k, v in metrics.items() if k not in _COLOR_SHIFT_KEYS}
+        ):
+            ri_rows.append([light_name, metric, value, status])
+        for row in _color_shift_rows(metrics):
+            color_rows.append([light_name, *row])
+    return [
+        ("四象限 RI 判定（逐光源）", ["light", "metric", "value", "status"], ri_rows),
+        ("Color shift（逐光源）", ["light", "metric", "value", "status"], color_rows),
+    ]
+
+
 def result_to_csv(result: dict, label: str = "", created: str | None = None) -> str:
     """analyze_shading 结果 → CSV 文本（纯函数）。
 
-    单光源：逐 metric（四象限 RI 按通道展开 + ri_diff + shift）；
-    多光源：逐光源逐 metric 展开。
+    分节输出（`# ===== 标题 =====` 分隔、各节独立表头）：
+    - 四象限 RI 判定：逐通道 RI + ri_diff（多光源时逐光源展开）；
+    - Color shift：green_red_shift / green_blue_shift；
+    - Imatest 对标：Luma / Color Shading 结构化指标（单光源且启用时）。
     """
     details = result.get("details") or {}
     mode = details.get("mode", "single")
@@ -141,23 +275,16 @@ def result_to_csv(result: dict, label: str = "", created: str | None = None) -> 
         created = datetime.now().isoformat(timespec="seconds")
 
     lines = _metadata_lines(result, label)
+    blocks = _multi_blocks(details) if mode == "multi" else _single_blocks(result, details)
+
     buf = io.StringIO()
     writer = csv.writer(buf, lineterminator="\n")
-
-    if mode == "multi":
-        writer.writerow(["light", "metric", "value", "status"])
-        for light_name, res in (details.get("lights") or {}).items():
-            for metric, _group, value, status in _metric_rows(
-                res.get("metrics", {})
-            ):
-                writer.writerow([light_name, metric, value, status])
-    else:
-        writer.writerow(["metric", "channel", "value", "status"])
-        metrics = result.get("metrics") or {}
-        cfa = list(details.get("channels") or ["Y"])
-        for metric, group, value, status in _metric_rows(metrics):
-            channel = cfa[int(group)] if group.isdigit() and int(group) < len(cfa) else ""
-            writer.writerow([metric, channel, value, status])
+    for title, header, rows in blocks:
+        if not rows:
+            continue
+        buf.write(f"# ===== {title} =====\n")
+        writer.writerow(header)
+        writer.writerows(rows)
 
     lines.append(buf.getvalue().rstrip("\n"))
     return "\n".join(lines) + "\n"

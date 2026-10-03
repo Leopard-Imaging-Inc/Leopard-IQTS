@@ -1,16 +1,34 @@
 ﻿# LeopardIQ Lens Shading Result CSV
-# schema_version: 1
+# schema_version: 2
 # label: 测试
-# created: 2026-08-28T16:24:45
+# created: 2026-09-23T17:38:19
 # mode: single
-# light_source: D65
+# light_source: 单光源
 # image: flat_0.7.png
 # cfa: Y
 # bin_size: 16
 # thresh: 0
+# ===== 四象限 RI 判定 =====
 metric,channel,value,status
 ri_tl,Y,0.737134,PASS
 ri_tr,Y,0.784043,PASS
 ri_bl,Y,0.784043,PASS
 ri_br,Y,0.830952,PASS
 ri_diff,,0.093818,PASS
+# ===== Imatest 对标：Luma 指标 =====
+metric,value
+max_rel,0.743572
+max_pixel,48729.974288
+corners_UL,0.626736
+corners_LL,0.629418
+corners_UR,0.629418
+corners_LR,0.632100
+corners_worst,0.626736
+corners_mean,0.629418
+sides_L,0.692451
+sides_R,0.695133
+sides_T,0.692451
+sides_B,0.695133
+sides_mean,0.692451
+sides_worst0,0.692451
+sides_worst1,0.692451

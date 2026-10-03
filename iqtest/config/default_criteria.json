@@ -12,12 +12,14 @@
     },
     "shading": {
       "params": {
-        "light_source": "D65",
-        "luminance_channel": "Y",
+        "test_item": "single",
         "grid_size": 16,
         "thresh": 0.0,
-        "support_extrapolation": false,
-        "enable_lsc_verify": true
+        "gamma": 1.0,
+        "imatest_report": true,
+        "imatest_block_size": 32,
+        "corner_region_pct": 0.0,
+        "contour_levels": 10
       },
       "criteria": {
         "ri_corner_min": 0.7,

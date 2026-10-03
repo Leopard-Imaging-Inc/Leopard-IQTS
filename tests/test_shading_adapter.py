@@ -77,12 +77,11 @@ def save_read_raw(cfa="RGGB", width=128, height=128):
     })
 
 
-def mono_config(corner_falloff=0.7, criteria=None):
+def mono_config(corner_falloff=0.7, criteria=None, test_item="single"):
     return {
         "params": {
-            "light_source": "D65", "luminance_channel": "Y",
+            "test_item": test_item,
             "grid_size": 16, "thresh": 0.0,
-            "support_extrapolation": False, "enable_lsc_verify": True,
         },
         "criteria": criteria or {"ri_corner_min": 0.6, "lum_uniformity_min": 0.7},
     }
@@ -202,18 +201,51 @@ def test_closed_loop_and_multi_light():
     print("[4/5] 闭环验证 + 多光源")
     from iqtest.analysis.shading_adapter import analyze_shading
 
-    # 闭环验证：校正后残余 RI 应更接近 1（≥ 校正前）
+    # 闭环验证默认关闭：初始 result 的 closed_loop 为 None
     png = make_mono_png(corner_falloff=0.6)
     result = analyze_shading([png], mono_config())
-    cl = result["details"]["closed_loop"]
-    check("闭环验证存在且 enabled", cl is not None and cl.get("enabled") is True)
+    check("闭环验证默认关闭", result["details"]["closed_loop"] is None)
+
+    # 结果界面重算 recompute_single：开启 LSC 后得到闭环，主指标不变，亮度通道切换生效
+    from iqtest.analysis.shading_adapter import recompute_single
+    from iqtest.analysis.shading_adapter import REPORT_CHANNEL
+
+    r1 = recompute_single(result, support_extrapolation=True, enable_lsc_verify=True,
+                          luminance_channel="G")
+    cl = r1["details"]["closed_loop"]
+    check("开启 LSC 得到闭环且 enabled", cl is not None and cl.get("enabled") is True)
     check("校正后最差 RI ≥ 校正前", cl["after_ri_min"] >= cl["before_ri_min"] - 1e-9,
           f"{cl['before_ri_min']:.4f} → {cl['after_ri_min']:.4f}")
     check("残余判定 PASS", cl.get("residual_pass") is True)
+    # 校正后测试数据（残余报告 + 校正后图像）应随闭环一并保留
+    check("闭环含校正后 report",
+          isinstance(cl.get("after_report"), dict)
+          and cl["after_report"].get("shading_map") is not None
+          and cl["after_report"].get("ri") is not None)
+    check("闭环含校正后图像",
+          cl.get("corrected_image") is not None
+          and cl["corrected_image"].ndim == 2
+          and cl["corrected_image"].shape == result["details"]["shading_profile"].shape[:2])
+    check("闭环记录亮度通道", cl.get("luminance_channel") == "G")
+    check("recompute 主 RI 不变(1e-9)", bool(np.allclose(
+        r1["metrics"]["ri_tl"]["value"], result["metrics"]["ri_tl"]["value"], atol=1e-9)))
+    check("recompute 切换亮度通道", r1["details"]["report"]["channel"] == "G"
+          and r1["details"]["luminance_channel"] == "G")
+    r2 = recompute_single(result, support_extrapolation=False, enable_lsc_verify=False)
+    check("recompute 关闭闭环", r2["details"]["closed_loop"] is None)
+    check("recompute 默认亮度通道 Y", r2["details"]["luminance_channel"] == REPORT_CHANNEL)
+    # 多光源/旧结果无 avg → 抛清晰错误
+    cfg_bad = {"details": {}, "metrics": {}}
+    try:
+        recompute_single(cfg_bad, support_extrapolation=False, enable_lsc_verify=True)
+        check("recompute 缺数据应报错", False)
+    except ValueError as exc:
+        check("recompute 缺数据抛 ValueError", "不支持即时重算" in str(exc))
 
     # 多光源（mono）：ri_spread 计算，color_shift_spread 为 None（mono 无 shift）
     png2 = make_mono_png(corner_falloff=0.55, base=50000.0)
-    cfg = mono_config(criteria={"ri_corner_min": 0.4, "lum_uniformity_min": 0.5})
+    cfg = mono_config(criteria={"ri_corner_min": 0.4, "lum_uniformity_min": 0.5},
+                      test_item="multi_light")
     cfg["params"]["image_lights"] = {png.name: "D65", png2.name: "TL84"}
     multi = analyze_shading([png, png2], cfg)
     check("多光源 mode", multi["details"]["mode"] == "multi")
@@ -228,7 +260,7 @@ def test_closed_loop_and_multi_light():
     cfg2 = mono_config(criteria={
         "ri_corner_min": 0.4, "lum_uniformity_min": 0.5,
         "green_red_shift_max": 0.5, "green_blue_shift_max": 0.5,
-    })
+    }, test_item="multi_light")
     cfg2["params"]["image_lights"] = {raw_a.name: "D65", raw_b.name: "TL84"}
     multi2 = analyze_shading([raw_a, raw_b], cfg2)
     spread = multi2["details"]["comparison"]["color_shift_spread"]
@@ -236,12 +268,31 @@ def test_closed_loop_and_multi_light():
           spread is not None and spread["green_red"] >= 0 and spread["green_blue"] >= 0,
           str(spread))
 
+    # 多光源子功能但光源不足 → 抛 ValueError
+    cfg_bad = mono_config(test_item="multi_light")
+    cfg_bad["params"]["image_lights"] = {png.name: "D65", png2.name: "D65"}
+    try:
+        analyze_shading([png, png2], cfg_bad)
+        check("多光源光源不足应报错", False, "未抛出异常")
+    except ValueError as exc:
+        check("多光源光源不足抛 ValueError", "≥2" in str(exc) or "不同光源" in str(exc),
+              str(exc)[:60])
+
+    # 未传 test_item 默认走 single（单光源），即使 image_lights 有多光源也忽略
+    cfg_default = mono_config(criteria={"ri_corner_min": 0.4, "lum_uniformity_min": 0.5})
+    cfg_default["params"].pop("test_item", None)
+    cfg_default["params"]["image_lights"] = {png.name: "D65", png2.name: "TL84"}
+    default_res = analyze_shading([png, png2], cfg_default)
+    check("未传 test_item 默认 single 模式",
+          default_res["details"]["mode"] == "single")
+
 
 def test_export():
-    print("[5/5] 导出：npy / CSV / PNG / 结果 CSV")
+    print("[5/5] 导出：npy / CSV / PNG / 校正后图片 / 结果 CSV")
     from iqtest.analysis.shading_adapter import analyze_shading
     from iqtest.analysis.shading_export import (
         result_to_csv,
+        save_corrected_image,
         save_shading_profile_image,
         write_result_csv,
         write_shading_profile_csv,
@@ -264,8 +315,34 @@ def test_export():
                                           OUT_DIR / "profile.png")
     check("PNG 导出", img_path.exists() and img_path.stat().st_size > 0)
 
+    corrected_path = save_corrected_image(
+        np.linspace(0.2, 1.0, 128 * 128).reshape(128, 128), OUT_DIR / "corrected.png"
+    )
+    check("校正后图片 PNG 导出", corrected_path.exists()
+          and corrected_path.stat().st_size > 0)
+
     text = result_to_csv(result, label="测试")
     check("结果 CSV 含元数据与指标", "# label: 测试" in text and "ri_diff" in text)
+    check("mono 结果 CSV 无 Color shift 节（mono 无彩色偏移）",
+          "# ===== Color shift =====" not in text)
+    check("结果 CSV 含 Imatest Luma 节",
+          "# ===== Imatest 对标：Luma 指标 =====" in text
+          and "corners_worst" in text and "max_rel" in text)
+
+    # Bayer 单光源：Imatest Color Shading 节应出现（mono 无）
+    save_read_raw(cfa="RGGB", width=128, height=128)
+    raw = make_bayer_raw(corner_falloff=0.7)
+    bayer = analyze_shading([raw], mono_config(criteria={
+        "ri_corner_min": 0.5, "lum_uniformity_min": 0.6,
+        "green_red_shift_max": 0.5, "green_blue_shift_max": 0.5,
+    }))
+    bayer_text = result_to_csv(bayer, label="bayer")
+    check("Bayer 结果 CSV 含 Imatest Color 节",
+          "# ===== Imatest 对标：Color Shading（R/G、B/G） =====" in bayer_text
+          and "rg_max" in bayer_text and "corner_center_r_g" in bayer_text)
+    check("Bayer 结果 CSV Color shift 节含 G/R、G/B",
+          "# ===== Color shift =====" in bayer_text
+          and "green_red_shift" in bayer_text and "green_blue_shift" in bayer_text)
 
     csv2 = write_result_csv(result, OUT_DIR / "result.csv", label="测试")
     check("结果 CSV 落盘", csv2.exists())

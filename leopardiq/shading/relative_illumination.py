@@ -1,5 +1,5 @@
 """
-Relative Illumination（相对照度 / 亮度 Shading）分析。
+Relative Illumination（相对照度 / 亮度 Shading）分析 —— 单光源 Shading 子功能。
 
 提取自 LeopardIQ0529/leopardiq/light/lens_shading.py。
 
@@ -10,12 +10,11 @@ Relative Illumination（相对照度 / 亮度 Shading）分析。
 4. 插值生成全分辨率 shading profile（供 LSC 使用）
 5. Bayer 输入时同时计算 Color Shading（green_red/blue_shift）
 
-多光源扩展（软件规划"几种光源"）：
-analyze_multi_light() 接受 {光源名: 图像} 字典，逐光源计算并汇总。
+多光源对比分析已解耦至 `multi_light.py`（`analyze_multi_light`）。
 """
 
 import math
-from typing import Dict, Optional, Tuple, Union
+from typing import Tuple, Union
 
 import numpy as np
 
@@ -115,6 +114,13 @@ def analyze_lens_shading(
     }
 
 
+def _is_pass(status) -> bool:
+    """判断指标是否 PASS；status 可为字符串或逐通道列表。"""
+    if isinstance(status, (list, tuple, np.ndarray)):
+        return all(s == "PASS" for s in status)
+    return status == "PASS"
+
+
 def analyze_relative_illumination(
     images: Union[np.ndarray, list],
     config: dict,
@@ -159,16 +165,9 @@ def analyze_relative_illumination(
     )
 
     metrics = {}
-    ri_min = float(np.nanmin(np.stack([
-        np.atleast_1d(result["ri_tl"]),
-        np.atleast_1d(result["ri_tr"]),
-        np.atleast_1d(result["ri_bl"]),
-        np.atleast_1d(result["ri_br"]),
-    ])))
-    metrics["ri_tl"] = {"value": np.atleast_1d(result["ri_tl"]).tolist(), "status": "PASS"}
-    metrics["ri_tr"] = {"value": np.atleast_1d(result["ri_tr"]).tolist(), "status": "PASS"}
-    metrics["ri_bl"] = {"value": np.atleast_1d(result["ri_bl"]).tolist(), "status": "PASS"}
-    metrics["ri_br"] = {"value": np.atleast_1d(result["ri_br"]).tolist(), "status": "PASS"}
+    for key in ("ri_tl", "ri_tr", "ri_bl", "ri_br"):
+        vals = np.atleast_1d(result[key])
+        metrics[key] = {"value": vals.tolist(), "status": ["PASS"] * len(vals)}
     metrics["ri_diff"] = {"value": result["ri_diff"], "status": "PASS"}
     if result["green_red_shift"] is not None:
         metrics["green_red_shift"] = {
@@ -180,9 +179,11 @@ def analyze_relative_illumination(
 
     if criteria:
         if "ri" in criteria:
-            ri_status = "PASS" if ri_min >= criteria["ri"] else "FAIL"
             for key in ("ri_tl", "ri_tr", "ri_bl", "ri_br"):
-                metrics[key]["status"] = ri_status
+                metrics[key]["status"] = [
+                    "PASS" if float(v) >= criteria["ri"] else "FAIL"
+                    for v in np.atleast_1d(result[key])
+                ]
         if "ri_diff" in criteria:
             metrics["ri_diff"]["status"] = (
                 "PASS" if result["ri_diff"] <= criteria["ri_diff"] else "FAIL"
@@ -195,57 +196,12 @@ def analyze_relative_illumination(
                 "PASS" if result["green_blue_shift"] <= criteria["green_blue_shift"] else "FAIL"
             )
 
-    overall_pass = all(m["status"] == "PASS" for m in metrics.values())
+    overall_pass = all(_is_pass(m["status"]) for m in metrics.values())
     return {
         "metrics": metrics,
         "pass": overall_pass,
         "details": {
             "shading_profile": result["shading_profile"],
             "bin_means": result["bin_means"],
-        },
-    }
-
-
-def analyze_multi_light(
-    images_by_light: Dict[str, Union[np.ndarray, list]],
-    config: dict,
-) -> dict:
-    """
-    多光源 Shading 分析（软件规划"几种光源"扩展接口）。
-
-    对每种光源分别执行 analyze_relative_illumination 并汇总。
-
-    Args:
-        images_by_light: {光源名: 图像或图像列表}，如 {"D65": img1, "TL84": img2}
-        config: 同 analyze_relative_illumination
-
-    Returns:
-        {
-            "lights": {光源名: analyze_relative_illumination 结果},
-            "pass": bool,            # 所有光源均 PASS 才为 True
-            "comparison": {          # 跨光源比较
-                "ri_min_per_light": {光源名: float},
-                "ri_spread": float,  # 各光源最差 RI 的离散度（max-min）
-            },
-        }
-    """
-    lights = {}
-    ri_min_per_light = {}
-    for light_name, images in images_by_light.items():
-        result = analyze_relative_illumination(images, config)
-        lights[light_name] = result
-        ri_values = []
-        for key in ("ri_tl", "ri_tr", "ri_bl", "ri_br"):
-            ri_values.extend(np.atleast_1d(result["metrics"][key]["value"]))
-        ri_min_per_light[light_name] = float(np.nanmin(ri_values))
-
-    overall_pass = all(r["pass"] for r in lights.values())
-    ri_values = list(ri_min_per_light.values())
-    return {
-        "lights": lights,
-        "pass": overall_pass,
-        "comparison": {
-            "ri_min_per_light": ri_min_per_light,
-            "ri_spread": float(max(ri_values) - min(ri_values)) if ri_values else 0.0,
         },
     }
